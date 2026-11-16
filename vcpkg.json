@@ -1,10 +1,7 @@
 {
   "dependencies": [
     "cmark",
-    {
-      "name": "ecm",
-      "host": true
-    },
+    "ecm",
     {
       "name": "libarchive",
       "default-features": false,
