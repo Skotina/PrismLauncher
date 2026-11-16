@@ -36,7 +36,10 @@ RUN apt-get --assume-yes --no-install-recommends install \
   gcc g++ temurin-17-jdk scdoc \
   # Build system
   cmake ninja-build pkg-config \
+  # Extra CMake Modules (required: find_package(ECM REQUIRED) in CMakeLists.txt)
+  extra-cmake-modules \
   # Dependencies
+  libcmark-dev libarchive-dev libtomlplusplus-dev libqrencode-dev \
   gamemode-dev libgamemode0 libgl1-mesa-dev \
   # Qt runtime requirements
   libglib2.0-0t64 libxkbcommon0 libgl1 libegl1 fontconfig \
