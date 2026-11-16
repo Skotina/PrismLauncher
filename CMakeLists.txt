@@ -317,6 +317,8 @@ if(Launcher_QT_VERSION_MAJOR EQUAL 6)
             Xml
         HINTS
             C:/Qt/*/*/lib/cmake
+            C:/Qt/*/*/lib/cmake/Qt6
+            $ENV{QTDIR}/lib/cmake/Qt6
             /opt/qt/*/*/lib/cmake
             $ENV{MINGW_PREFIX}/opt/qt/*/*/lib/cmake
     )
