@@ -118,9 +118,25 @@ cd "$SRC_DIR"
 # it is safe ("dubious ownership" error otherwise).
 git config --global --add safe.directory "$SRC_DIR" || true
 
+# The image contains no sources; everything comes from the bind mount. If /work
+# is not a git checkout, the user most likely forgot "-v $PWD:/work".
+if [ ! -d "$SRC_DIR/.git" ] && ! git rev-parse --git-dir >/dev/null 2>&1; then
+  echo "ERROR: '$SRC_DIR' is not a git repository." >&2
+  echo "" >&2
+  echo "The image does NOT contain the sources — they must be mounted at runtime:" >&2
+  echo '    docker run --rm -v "$PWD:/work" prismlauncher-build' >&2
+  echo "" >&2
+  echo "Run this from the root of your PrismLauncher clone (the directory that" >&2
+  echo "contains CMakeLists.txt and .git). On SELinux systems (Fedora/RHEL)" >&2
+  echo 'append :z to the volume:  -v "$PWD:/work:z"' >&2
+  exit 1
+fi
+
 # Fetch git submodules if they are missing (libnbtplusplus is required to build)
 if [ ! -f libraries/libnbtplusplus/CMakeLists.txt ]; then
   echo "==> Initializing git submodules..."
+  # Submodules live inside the mounted tree; tell git the nested paths are safe.
+  git config --global --add safe.directory '*' || true
   git submodule update --init --recursive libraries/libnbtplusplus
 fi
 
