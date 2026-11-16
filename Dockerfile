@@ -13,7 +13,8 @@
 FROM debian:stable-slim
 
 ARG QT_ABI=gcc_64
-ARG QT_ARCH=
+# aqt >= 3 uses the "linux_gcc_64" target name for Qt >= 6.9.x archives
+ARG QT_TARGET_NAME=linux_gcc_64
 ARG QT_HOST=linux
 ARG QT_TARGET=desktop
 ARG QT_VERSION=6.10.3
@@ -47,10 +48,14 @@ RUN echo "C.UTF-8 UTF-8" > /etc/locale.gen && locale-gen
 ENV LC_ALL=C.UTF-8
 
 # Prepare and install Qt
+# NOTE: aqt may print "WARNING: Failed to download checksum for ... Updates.xml"
+# when its mirrorbrain redirect lands on an unofficial/incomplete mirror.
+# The checksum is optional; the installation still succeeds. To silence it, pin
+# an official mirror with:  --base https://download.qt.io
 RUN pip3 install --break-system-packages aqtinstall
 RUN aqt install-qt \
-  ${QT_HOST} ${QT_TARGET} ${QT_VERSION} ${QT_ARCH} \
-  --outputdir /opt/qt \
+  ${QT_HOST} ${QT_TARGET} ${QT_VERSION} ${QT_TARGET_NAME} \
+  -O /opt/qt \
   --modules qtimageformats qtnetworkauth
 
 ENV PATH=/opt/qt/${QT_VERSION}/${QT_ABI}/bin:$PATH
