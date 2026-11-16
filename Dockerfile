@@ -91,15 +91,32 @@ RUN apt-get --assume-yes autopurge && rm -rf /var/lib/apt/lists/*
 
 # Build script: runs at container start, compiles the project from sources
 # mounted at /work
+# NOTE: heredoc content is written VERBATIM into the image file, so it must use
+# Unix (LF) line endings. If your git config has core.autocrlf=true (typical on
+# Windows), add a .gitattributes rule "* text=auto eol=lf" or set
+# "git config core.autocrlf input" — otherwise the shebang becomes
+# "#!/usr/bin/env bash\r" and the container fails with:
+#   env: 'bash\r': No such file or directory
 COPY <<'EOF' /usr/local/bin/build-prism.sh
-#!/usr/bin/env bash
+#!/bin/bash
 set -euo pipefail
+
+# Self-heal: if this file somehow got Windows CRLF line endings, strip the
+# carriage returns and re-exec itself.
+if grep -q $'\r' "$0"; then
+  sed -i 's/\r$//' "$0"
+  exec bash "$0" "$@"
+fi
 
 SRC_DIR="${SRC_DIR:-/work}"
 BUILD_DIR="${BUILD_DIR:-${SRC_DIR}/build-linux}"
 BUILD_TYPE="${BUILD_TYPE:-Release}"
 
 cd "$SRC_DIR"
+
+# Git refuses to operate in a mounted repo owned by another uid unless told
+# it is safe ("dubious ownership" error otherwise).
+git config --global --add safe.directory "$SRC_DIR" || true
 
 # Fetch git submodules if they are missing (libnbtplusplus is required to build)
 if [ ! -f libraries/libnbtplusplus/CMakeLists.txt ]; then
@@ -118,7 +135,8 @@ cmake --build "$BUILD_DIR" -j"$(nproc)"
 echo "==> Done. Binary: $BUILD_DIR/prismlauncher"
 "$BUILD_DIR/prismlauncher" --help >/dev/null 2>&1 && echo "    (binary runs OK)" || true
 EOF
-RUN chmod +x /usr/local/bin/build-prism.sh
+RUN chmod +x /usr/local/bin/build-prism.sh && \
+    head -1 /usr/local/bin/build-prism.sh | od -c | head -2
 
 WORKDIR /work
 
