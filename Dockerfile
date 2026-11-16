@@ -39,7 +39,7 @@ RUN apt-get --assume-yes --no-install-recommends install \
   # Extra CMake Modules (required: find_package(ECM REQUIRED) in CMakeLists.txt)
   extra-cmake-modules \
   # Dependencies
-  libcmark-dev libarchive-dev libtomlplusplus-dev libqrencode-dev \
+  libarchive-dev libtomlplusplus-dev libqrencode-dev \
   gamemode-dev libgamemode0 libgl1-mesa-dev \
   # Qt runtime requirements
   libglib2.0-0t64 libxkbcommon0 libgl1 libegl1 fontconfig \
@@ -75,6 +75,27 @@ RUN aqt install-qt \
   -O /opt/qt \
   --base https://download.qt.io \
   --modules qtimageformats qtnetworkauth
+
+# Build cmark from source.
+# Debian's libcmark-dev is broken in slim images: its exported CMake config
+# references the "/usr/bin/cmark" executable which the -dev package does not
+# ship, so configure dies with:
+#   The imported target "cmark::cmark_exe" references the file "/usr/bin/cmark"
+#   but this file does not exist.
+# Building upstream cmark with executables disabled avoids that entirely.
+ARG CMARK_VERSION=0.31.2
+RUN curl -fsSL "https://github.com/commonmark/cmark/archive/refs/tags/${CMARK_VERSION}.tar.gz" -o /tmp/cmark.tar.gz \
+ && tar -xzf /tmp/cmark.tar.gz -C /tmp \
+ && cmake -S "/tmp/cmark-${CMARK_VERSION}" -B /tmp/cmark-build -G Ninja \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMARK_TESTS=OFF \
+      -DCMARK_STATIC=ON \
+      -DCMARK_SHARED=ON \
+      -DCMARK_LIB_EXE=OFF \
+      -DCMARK_EXTENSIONS_EXE=OFF \
+ && cmake --build /tmp/cmark-build -j"$(nproc)" \
+ && cmake --install /tmp/cmark-build \
+ && rm -rf /tmp/cmark.tar.gz "/tmp/cmark-${CMARK_VERSION}" /tmp/cmark-build
 
 ENV PATH=/opt/qt/${QT_VERSION}/${QT_ABI}/bin:$PATH
 ENV QT_PLUGIN_PATH=/opt/qt/${QT_VERSION}/${QT_ABI}/plugins/
