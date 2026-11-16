@@ -52,10 +52,25 @@ ENV LC_ALL=C.UTF-8
 # when its mirrorbrain redirect lands on an unofficial/incomplete mirror.
 # The checksum is optional; the installation still succeeds. To silence it, pin
 # an official mirror with:  --base https://download.qt.io
+#
+# Proxy support: if your network requires a proxy (e.g. one running on the
+# docker host), pass it at build time:
+#   docker build -t prismlauncher-build \
+#     --build-arg HTTP_PROXY=http://127.0.0.1:8888 \
+#     --build-arg HTTPS_PROXY=http://127.0.0.1:8888 \
+#     --network host .
+# On Linux use http://host.docker.internal:8888 together with
+#   --add-host=host.docker.internal:host-gateway
+# or simply export HTTP(S)_PROXY in your shell (docker picks them up as defaults).
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ARG NO_PROXY=localhost,127.0.0.1
+
 RUN pip3 install --break-system-packages aqtinstall
 RUN aqt install-qt \
   ${QT_HOST} ${QT_TARGET} ${QT_VERSION} ${QT_TARGET_NAME} \
   -O /opt/qt \
+  --base https://download.qt.io \
   --modules qtimageformats qtnetworkauth
 
 ENV PATH=/opt/qt/${QT_VERSION}/${QT_ABI}/bin:$PATH
