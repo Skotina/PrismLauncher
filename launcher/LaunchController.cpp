@@ -93,11 +93,11 @@ void LaunchController::decideAccount()
         m_accountToUse = accounts->at(instanceAccountIndex);
     }
 
-    if (!accounts->anyAccountIsValid()) {
-        // Tell the user they need to log in at least one account in order to play.
+    if (accounts->count() == 0) {
+        // Tell the user they need to add at least one account in order to play.
         auto reply = CustomMessageBox::selectable(m_parentWidget, tr("No Accounts"),
-                                                  tr("In order to play Minecraft, you must have at least one Microsoft "
-                                                     "account which owns Minecraft logged in. "
+                                                  tr("In order to play Minecraft, you must have at least one account added. "
+                                                     "You can add a Microsoft account that owns Minecraft or an offline account. "
                                                      "Would you like to open the account manager to add an account now?"),
                                                   QMessageBox::Information, QMessageBox::Yes | QMessageBox::No)
                          ->exec();
@@ -111,7 +111,7 @@ void LaunchController::decideAccount()
         }
     }
 
-    if (!m_accountToUse && accounts->anyAccountIsValid()) {
+    if (!m_accountToUse && accounts->count() > 0) {
         // If no default account is set, ask the user which one to use.
         ProfileSelectDialog selectDialog(tr("Which account would you like to use?"), ProfileSelectDialog::GlobalDefaultCheckbox,
                                          m_parentWidget);
@@ -132,6 +132,14 @@ LaunchDecision LaunchController::decideLaunchMode()
 {
     if (!m_accountToUse || m_wantedLaunchMode == LaunchMode::Demo) {
         m_actualLaunchMode = LaunchMode::Demo;
+        return LaunchDecision::Continue;
+    }
+
+    // Offline accounts have no Microsoft session to refresh, but the launcher itself can still
+    // go online to download missing libraries and assets. Only an explicitly requested
+    // offline launch skips that.
+    if (m_accountToUse->accountType() == AccountType::Offline) {
+        m_actualLaunchMode = m_wantedLaunchMode == LaunchMode::Offline ? LaunchMode::Offline : LaunchMode::Normal;
         return LaunchDecision::Continue;
     }
 
@@ -395,7 +403,8 @@ void LaunchController::launchInstance()
 
     // Prepend Online and Auth Status
     QString online_mode;
-    if (m_actualLaunchMode == LaunchMode::Normal) {
+    const bool usingOfflineAccount = m_accountToUse && m_accountToUse->accountType() == AccountType::Offline;
+    if (m_actualLaunchMode == LaunchMode::Normal && !usingOfflineAccount) {
         online_mode = "online";
 
         // Prepend Server Status
